@@ -16,10 +16,15 @@ const geist = Geist({
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className={`${geist.variable}`}>
-      <body>{children}</body>
+    // Add the 'dark' class here
+    <html lang="en" className="dark">
+      <body className={`font-sans ${geist.variable} bg-gray-900 text-gray-100`}>
+        {children}
+      </body>
     </html>
   );
 }
