@@ -8,93 +8,43 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+
 export const createTable = pgTableCreator((name) => `t3_drive_tutorial_${name}`);
 
 // --- Users Table ---
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(), // Consider aligning with Supabase Auth user IDs if applicable
-  email: text("email").notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// --- Folders Table ---
+// --- Folders Table (Path-based) ---
 export const folders = pgTable("folders", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 256 }).notNull(),
   ownerId: uuid("owner_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Self-referencing issue
-  parentFolderId: uuid("parent_folder_id").references(() => folders.id, {
-    onDelete: "cascade",
-  }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
+  path: text("path").notNull(), // e.g. "/user-id/folder1/subfolder"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// --- Files Table ---
+// --- Files Table (Path-based) ---
 export const files = pgTable("files", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 256 }).notNull(),
-  url: text("url"),
-  authorId: uuid("author_id")
+  url: text("url").notNull(),
+  ownerId: uuid("owner_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Relation inference issue
-  folderId: uuid("folder_id").references(() => folders.id, {
-    onDelete: "cascade",
-  }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
+  path: text("path").notNull(), // e.g. "/user-id/folder1/file.pdf"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// --- Relations ---
+// (Optional relations if you still need them)
 export const usersRelations = relations(users, ({ many }) => ({
-  ownedFolders: many(folders, { relationName: "folderOwner" }),
-  ownedFiles: many(files, { relationName: "fileAuthor" }),
-}));
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- Relation inference issue
-export const foldersRelations = relations(folders, ({ one, many }) => ({
-  owner: one(users, {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access 
-    fields: [folders.ownerId],
-    references: [users.id],
-    relationName: "folderOwner",
-  }),
-  parentFolder: one(folders, {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Relation inference issue
-    fields: [folders.parentFolderId],
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access 
-    references: [folders.id],
-    relationName: "childFolders",
-  }),
-  childFolders: many(folders, {
-    relationName: "childFolders",
-  }),
-  files: many(files, {
-    relationName: "folderFiles",
-  }),
-}));
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- Relation inference issue
-export const filesRelations = relations(files, ({ one }) => ({
-  author: one(users, {
-    fields: [files.authorId],
-    references: [users.id],
-    relationName: "fileAuthor",
-  }),
-  folder: one(folders, {
-    fields: [files.folderId],
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access 
-    references: [folders.id],
-    relationName: "folderFiles",
-  }),
+  folders: many(folders),
+  files: many(files),
 }));
